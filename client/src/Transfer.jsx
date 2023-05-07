@@ -1,23 +1,41 @@
 import { useState } from "react";
 import server from "./server";
+import { signMessage, recoverKey, getAddress, recoverAddress } from "./utils";
 
-function Transfer({ address, setBalance }) {
+function Transfer({ privateKey, address, setBalance }) {
   const [sendAmount, setSendAmount] = useState("");
-  const [recipient, setRecipient] = useState("");
+  const [recipient, setRecipient] = useState(
+    "0x25c4acef0a642b04439054d4da9fe74311c96de6"
+  );
 
   const setValue = (setter) => (evt) => setter(evt.target.value);
 
   async function transfer(evt) {
     evt.preventDefault();
 
+    const transaction = {
+      sender: address,
+      amount: parseInt(sendAmount),
+      recipient,
+    };
+    const transactionStr = JSON.stringify(transaction);
+    let sig;
+
+    try {
+      sig = signMessage(transactionStr, privateKey);
+    } catch (error) {
+      console.log(error);
+    }
+
+    const msg = {
+      sigHex: sig.toCompactHex(),
+      sigRecovery: sig.recovery,
+      transactionStr,
+    };
     try {
       const {
         data: { balance },
-      } = await server.post(`send`, {
-        sender: address,
-        amount: parseInt(sendAmount),
-        recipient,
-      });
+      } = await server.post(`send`, msg);
       setBalance(balance);
     } catch (ex) {
       alert(ex.response.data.message);
